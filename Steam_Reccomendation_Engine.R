@@ -5,45 +5,55 @@ library(dplyr)
 df = read.csv("Ratio_CSV.csv")
 df_cast = acast(df, user~game_name)
 df_cast_dataframe = data.frame(df_cast)
-df_sample = sample_n(df_cast_dataframe,10)
+
+# Pull only relevant games
+columnmeans = colMeans(df_cast_dataframe)
+filter_by_name = names(sort(columnmeans, decreasing = TRUE)[0:500])
+df_filtered = df_cast_dataframe[,c(filter_by_name)]
 #names(df_cast_dataframe)
 
 # Init
-X = matrix(.1,nrow=ncol(df_sample),ncol=100)
-Theta = matrix(.1,nrow=nrow(df_sample),ncol=100)
-Y = df_sample
-R = data.frame((Y!=0))
+numbercol = ncol(df_filtered)
+numberrow = nrow(df_filtered)
+X = matrix(.1,nrow=ncol(df_filtered),ncol=100)
+Theta = matrix(.1,nrow=nrow(df_filtered),ncol=100)
+Y = df_filtered
+R = (Y!=0)*1
 
-#Gradient for X
-xGradient = function(X,Theta,Y,R,lambda){
-  XGrad = t(as.matrix(t(Theta))%*%as.matrix((R*(X%*%t(Theta)-Y)))) +
-    lambda*X
-  return(XGrad)
+TotalGrad = function(X,Theta,Y,R,lambda,numbercol,numberrow){
+  #Gradient for X
+  XGradient = function(X,Theta,Y,R,lambda){
+    XGrad = t(as.matrix(t(Theta))%*%as.matrix((R*(X%*%t(Theta)-Y)))) +
+      lambda*X
+    return(XGrad)
+  }
+  
+  #Gradient for Theta
+  ThetaGradient = function(X,Theta,Y,R,lambda){
+    ThetaGrad = as.matrix(R*(X%*%t(Theta)-Y))%*%as.matrix(X) +
+      lambda*Theta
+    return(ThetaGrad)
+  } 
+  XGrad = XGradient(X,Theta,Y,R,lambda)
+  ThetaGrad = ThetaGradient(X,Theta,Y,R,lambda)
+  Grad = rbind(XGrad,ThetaGrad)
+  return(Grad)
 }
 
-#Gradient for Theta
-ThetaGradient = function(X,Theta,Y,R,lambda){
-  ThetaGrad = as.matrix(R*(X%*%t(Theta)-Y))%*%as.matrix(X) +
-    lambda*Theta
-  return(ThetaGrad)
-} 
-
 #Cost function and gradients
-CostFunction = function(X,Theta,Y,R,lambda){
+CostFunction = function(X,Theta,Y,R,lambda,numbercol,numberrow){
+  X = matrix(data = X,nrow = numberrow, ncol = 100)
   initCost = sum(R*(X%*%t(Theta)-Y))^2
   J = .5 *initCost+ 
     .5*lambda*(sum(Theta))^2+
     .5*lambda*(sum(X))^2
-  xGrad = xGradient(X,Theta,Y,R,lambda)
-  ThetaGrad = ThetaGradient(X,Theta,Y,R,lambda)
-  Grad = rbind(xGrad,ThetaGrad)
-  newList <- list("JList" = J, "GradList" = Grad)
-  return(newList)
+  return(J)
 }
 
 #run the functions
-rm(df, df_cast, df_cast_dataframe,G)
-CostGradList = CostFunction(X,Theta,Y,R,.5)
-optim(X,Theta,Y,R,.5,fn = CostFunction)
+Cost = CostFunction(X,Theta,Y,R,.5)
+GradList = TotalGrad(X,Theta,Y,R,.5)
+options(error=recover)
+answer = optim(X,Theta,Y,R,.5,numbercol,numberrow,fn = CostFunction, gr = TotalGrad)
 dim(xGradient(X,Theta,Y,R,.5))
 dim(ThetaGradient(X,Theta,Y,R,.5))
