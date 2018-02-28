@@ -15,12 +15,15 @@ df_filtered = df_cast_dataframe[,c(filter_by_name)]
 # Init
 numbercol = ncol(df_filtered)
 numberrow = nrow(df_filtered)
-X = matrix(.1,nrow=ncol(df_filtered),ncol=100)
-Theta = matrix(.1,nrow=nrow(df_filtered),ncol=100)
+X = matrix(.1,nrow=ncol(df_filtered),ncol=25)
+Theta = matrix(.1,nrow=nrow(df_filtered),ncol=25)
 Y = df_filtered
 R = (Y!=0)*1
 
-TotalGrad = function(X,Theta,Y,R,lambda,numbercol,numberrow){
+TotalGrad = function(XTheta,Y,R,lambda,numbercol,numberrow){
+  dim(XTheta)
+  X = matrix(data = XTheta[0:numbercol,],nrow = numbercol, ncol = 25)
+  Theta = matrix(data = XTheta[numberrow:numberrow+numbercol,],nrow = numberrow, ncol = 25)
   #Gradient for X
   XGradient = function(X,Theta,Y,R,lambda){
     XGrad = t(as.matrix(t(Theta))%*%as.matrix((R*(X%*%t(Theta)-Y)))) +
@@ -39,10 +42,10 @@ TotalGrad = function(X,Theta,Y,R,lambda,numbercol,numberrow){
   Grad = rbind(XGrad,ThetaGrad)
   return(Grad)
 }
-
 #Cost function and gradients
-CostFunction = function(X,Theta,Y,R,lambda,numbercol,numberrow){
-  X = matrix(data = X,nrow = numberrow, ncol = 100)
+CostFunction = function(XTheta,Y,R,lambda,numbercol,numberrow){
+  X = matrix(data = XTheta[0:numbercol*25],nrow = numbercol, ncol = 25)
+  Theta = matrix(data = XTheta[((numbercol*25)+1):length(XTheta)],nrow = numberrow, ncol = 25)
   initCost = sum(R*(X%*%t(Theta)-Y))^2
   J = .5 *initCost+ 
     .5*lambda*(sum(Theta))^2+
@@ -51,9 +54,9 @@ CostFunction = function(X,Theta,Y,R,lambda,numbercol,numberrow){
 }
 
 #run the functions
-Cost = CostFunction(X,Theta,Y,R,.5)
-GradList = TotalGrad(X,Theta,Y,R,.5)
+Cost = CostFunction(c(X,Theta),Y,R,.5,numbercol,numberrow)
+GradList = TotalGrad(rbind(X,Theta),Y,R,.5,numbercol,numberrow)
 options(error=recover)
-answer = optim(X,Theta,Y,R,.5,numbercol,numberrow,fn = CostFunction, gr = TotalGrad)
+answer = optim(rbind(X,Theta),Y,R,.5,numbercol,numberrow,fn = CostFunction, gr = TotalGrad)
 dim(xGradient(X,Theta,Y,R,.5))
 dim(ThetaGradient(X,Theta,Y,R,.5))
